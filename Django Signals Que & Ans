@@ -1,0 +1,66 @@
+QUESTION 1: By default are django signals executed synchronously or asynchronously? Please support your answer with a code snippet that conclusively proves your stance. The code does not need to be elegant and production ready, we just need to understand your logic.
+
+ANSWER: By default, Django signals are executed synchronously. This means that when a signal is sent, the receiver functions are executed immediately in the same thread.
+
+CODE:
+from django.dispatch import Signal, receiver
+my_signal = Signal()
+
+def my_receiver(sender, **kwargs):
+    print("Signal received!")
+
+print("Sending signal...")
+my_signal.send(sender=None)
+print("Signal sent.")
+
+
+
+QUESTION 2: Do django signals run in the same thread as the caller? Please support your answer with a code snippet that conclusively proves your stance. The code does not need to be elegant and production ready, we just need to understand your logic.
+
+ANSWER: Yes, Django signals run in the same thread as the caller. This means that when you send a signal, the receiver functions execute in the same thread.
+
+CODE:
+
+import threading
+from django.dispatch import Signal, receiver
+
+my_signal = Signal()
+
+def my_receiver(sender, **kwargs):
+    print("Signal received in thread:", threading.current_thread().name)
+
+def send_signal():
+    print("Sending signal in thread:", threading.current_thread().name)
+    my_signal.send(sender=None) 
+    print("Signal sent.")
+send_signal()
+
+
+
+QUESTION 3: By default do django signals run in the same database transaction as the caller? Please support your answer with a code snippet that conclusively proves your stance. The code does not need to be elegant and production ready, we just need to understand your logic.
+
+ANSWER: Yes, by default, Django signals run in the same database transaction as the caller. If a signal is sent within a transaction that gets rolled back, any changes made by the signal will also be rolled back.
+
+CODE:
+
+from django.db import transaction
+from django.dispatch import Signal, receiver
+from django.db import models, IntegrityError
+
+class MyModel(models.Model):
+    name = models.CharField(max_length=100)
+
+my_signal = Signal()
+
+def my_receiver(sender, **kwargs):
+    MyModel.objects.create(name="New Instance")
+
+def run_transaction():
+    try:
+        with transaction.atomic():  # Start a transaction
+            my_signal.send(sender=None)  # Send the signal
+            raise IntegrityError("Rollback")  # Force rollback
+    except IntegrityError:
+        print("Transaction failed.") 
+run_transaction()
+print("Instances in database:", MyModel.objects.count())
